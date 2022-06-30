@@ -5,12 +5,23 @@ from keras.layers import Dense, Flatten
 from keras.callbacks import EarlyStopping
 from keras.optimizers import Adam
 from keras.metrics import Precision, Recall
+from keras.models import save_model
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 import config as cfg
 import tensorflow as tf
 import numpy as np
 import pandas as pd
+import h5py
+import json
+
+
+def save_model_ext(model, filepath, overwrite=True, meta_data=None):
+    save_model(model, filepath, overwrite)
+    if meta_data is not None:
+        f = h5py.File(filepath, mode='a')
+        f.attrs['my_meta_data'] = meta_data
+        f.close()
 
 
 def create_image_generators(df_4_train, df_4_test):
@@ -73,9 +84,6 @@ def train_evaluate_model(train_generator, valid_generator, test_generator):
     es = EarlyStopping(monitor='val_loss', patience=cfg.PATIENCE, restore_best_weights=True)
     model.fit(train_generator, validation_data=valid_generator, epochs=cfg.EPOCHS, callbacks=es)
 
-    print('\n')
-    model.evaluate(test_generator)
-
     IMAGE_LABELS_LIST = list(train_generator.class_indices.keys())
     n_images = len(test_generator.classes)
     n_labels = len(IMAGE_LABELS_LIST)
@@ -136,11 +144,18 @@ def find_labels(comments):
 
 
 def main():
-    df_train, df_test = create_df()
+    answer = input('Warning- Continue only if you have GPU\n Continue? (y,n)')
+    if answer.lower() == 'y':
+        df_train, df_test = create_df()
+        train_g, valid_g, test_g = create_image_generators(df_train, df_test)
+        model = train_evaluate_model(train_g, valid_g, test_g)
 
-    train_g, valid_g, test_g = create_image_generators(df_train, df_test)
-
-    model = train_evaluate_model(train_g, valid_g, test_g)
+    # save
+    answer = input('Overwrite model? (y,n)')
+    if answer.lower() == 'y':
+        labels = list(train_g.class_indices.keys())
+        labels_string = json.dumps(labels)
+        save_model_ext(model, cfg.CNN_MODEL_FILE, meta_data=labels_string)
 
 
 if __name__ == '__main__':
