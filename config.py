@@ -6,13 +6,13 @@ PROBA_THRESH = 0.4
 IMAGE_LABELS = {
     'person': ['man', 'men', 'woman', 'women', 'guy', 'lady', 'person', 'people', 'boy', 'girl', 'child', 'kid',
                'children', 'NOUN1'],
-    'dog': ['dog', 'dogs', 'NOUN1'],
+    'dog': ['dog', 'NOUN1'],
     'water': ['water', 'NOUN2'],
     'grass': ['grass', 'NOUN2'],
     'street': ['street', 'NOUN2'],
-    'jump': ['jump', 'jumping', 'VERB'],
-    'run': ['run', 'runs', 'runing', 'VERB'],
-    'ride': ['riding', 'ride', 'VERB'],
+    'jump': ['jump', 'VERB'],
+    'run': ['run', 'VERB'],
+    'ride': ['ride', 'VERB'],
     'sit': ['sit', 'VERB']}
 
 # train validation test

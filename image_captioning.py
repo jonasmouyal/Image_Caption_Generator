@@ -124,19 +124,11 @@ def main():
         else:
             print('Wrong input')
         time.sleep(2)
-    # # save
-    # labels_string = json.dumps(labels)
-    # save_model_ext(model, filepath, meta_data=labels_string)
 
 
-# from keras.models import save_model
-# def save_model_ext(model, filepath, overwrite=True, meta_data=None):
-#     save_model(model, filepath, overwrite)
-#     if meta_data is not None:
-#         f = h5py.File(filepath, mode='a')
-#         f.attrs['my_meta_data'] = meta_data
-#         f.close()
+# load model
 cnn_model, loaded_labels_string = load_model_ext(cfg.CNN_MODEL_FILE)
 cnn_labels = np.array(json.loads(loaded_labels_string))
+
 if __name__ == '__main__':
     main()
