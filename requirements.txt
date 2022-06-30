@@ -1,0 +1,6 @@
+gradio~=3.0.21
+numpy~=1.23.0
+h5py~=3.7.0
+opencv-python~=4.6.0.66
+pyinflect~=0.5.1
+tensorflow~=2.9.1
