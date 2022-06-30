@@ -1,8 +1,8 @@
-# Logging configuration
-LOGFILE_NAME = "logfile.log"
-LOGFILE_DEBUG = False  # When the flag is true the logging level is debug
+import tensorflow as tf
+from keras.applications.xception import Xception
 
-# cnn model hyperparameters
+# prediction
+PROBA_THRESH = 0.4
 IMAGE_LABELS = {
     'person': ['man', 'men', 'woman', 'women', 'guy', 'lady', 'person', 'people', 'boy', 'girl', 'child', 'kid',
                'children', 'NOUN1'],
@@ -14,15 +14,37 @@ IMAGE_LABELS = {
     'run': ['run', 'runs', 'runing', 'VERB'],
     'ride': ['riding', 'ride', 'VERB'],
     'sit': ['sit', 'VERB']}
-# MODE = 'multi_label'
-#
-# if MODE == 'multi_class':
-#   LABEL_CREATION = find_class
-# elif MODE == 'multi_label':
-#   LABEL_CREATION = find_labels
-BATCH_SIZE = 16
-IMAGE_SIZE = 256
-AUG = True
-PROBA_THRESH = 0.4
 
-CNN_MODEL_FILE = 'cnn_model\cnn_model.h5'
+# train validation test
+TEST_SPLIT = 0.1
+VALIDATION_SPLIT = 0.1 / (1 - TEST_SPLIT)
+
+# ImageDataGenerator
+CAPTIONS = 'image_comments.csv'
+IMAGES_FOLDER = "./images/"
+RESCALE = 1. / 255.
+SEED = 1
+
+# augmentation
+AUGMENTATION = True
+SHIFT = 0.1
+ROTATE = 35
+
+# network
+CNN_MODEL_FILE = 'cnn_model/cnn_model.h5'
+PRETRAIN_MODEL = Xception
+TRAIN_ALL = True
+HEAD_UNITS = 256  # final layer before output layer
+IMAGE_SIZE = 256
+BATCH_SIZE = 16
+EPOCHS = 30
+LEARNING_RATE = 3e-5
+PATIENCE = 3  # EarlyStopping
+
+# GUI
+IMAGES_EXAMPLES = ['examples/img1.jpg', 'examples/img2.jpg', 'examples/img3.jpg', 'examples/img4.jpg',
+                   'examples/img5.jpg', 'examples/img6.jpg']
+
+AUGMENTATION = False
+EPOCHS = 1
+TRAIN_ALL = False

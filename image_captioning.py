@@ -1,6 +1,4 @@
 import h5py
-import argparse
-import sys
 import json
 import cv2
 import time
@@ -10,7 +8,6 @@ import config as cfg
 import tensorflow as tf
 from collections import defaultdict
 from pyinflect import getInflection
-from argparse import RawTextHelpFormatter
 
 
 def load_model_ext(filepath):
@@ -39,7 +36,7 @@ def create_caption_cnn(img, thresh):
 
     # preprocess image
     img = cv2.resize(img, (cfg.IMAGE_SIZE, cfg.IMAGE_SIZE))[np.newaxis, :]
-    img = img / 255
+    img = img * cfg.RESCALE
 
     # predict probabilities of the labels
     pred = cnn_model.predict(img)
@@ -48,27 +45,26 @@ def create_caption_cnn(img, thresh):
     y_pred = np.array([[1 if i > thresh else 0 for i in j] for j in pred])
     pred_labels = cnn_labels[y_pred.astype(bool)[0]]
 
+    # organize labels by their pos tags
     labels_pos_tag = {pred_label: cfg.IMAGE_LABELS[pred_label][-1] for pred_label in pred_labels}
     mydict = dict(labels_pos_tag)
     pos_tag_labels = defaultdict(list)
     for key, value in mydict.items():
         pos_tag_labels[value].append(key)
 
+    # create caption
     caption = ['A']
-
     if 'NOUN1' in pos_tag_labels:
         for n, noun in enumerate(pos_tag_labels['NOUN1']):
             if n > 0:
                 caption += ['and a']
             caption += [noun]
-
     if 'VERB' in pos_tag_labels:
         for n, verb in enumerate(pos_tag_labels['VERB']):
             if n > 0:
                 caption += ['and']
             verb = getInflection(verb, tag='VBG')[0]
             caption += [verb]
-
     if 'NOUN2' in pos_tag_labels:
         for n, noun in enumerate(pos_tag_labels['NOUN2']):
             if n > 0:
@@ -91,27 +87,6 @@ def create_caption_gui_wrapper(img):
     return pred_caption
 
 
-def parse_args(args_string_list):
-    """
-    parse_args() is parsing the py file input arguments into the struct args
-    :param args_string_list: a list of the input arguments of the py file
-    :return a Struct with all the input arguments of the py file
-    """
-
-    # Interface definition
-    parser = argparse.ArgumentParser(description="This program scrapes data from Metacritic's albums charts.\n"
-                                                 "It stores the data in relational database.\n"
-                                                 "It allows to filter the desire chart by criteria.",
-                                     formatter_class=RawTextHelpFormatter)
-
-    parser.add_argument('-m', '--model_type', type=str, required=True, help='Options: cnn, transformer',
-                        default='transformer')
-    parser.add_argument('-f', '--file', help='File path', default='')
-    parser.add_argument('-g', '--gui', help='Creates link to GUI', action='store_true', default=False)
-
-    return parser.parse_args(args_string_list)
-
-
 def main():
     """
     main() getting the input arguments of the py file
@@ -119,8 +94,6 @@ def main():
     """
 
     # TODO: exceptions!!!!!
-
-    args = parse_args(sys.argv[1:])
 
     print('Welcome to image captioning')
 
@@ -140,11 +113,11 @@ def main():
             print('\nImage caption:')
             print(pred_caption)
         elif cmd == '2':
-            # create GUI object and print a link to the GUI
+            # create GUId object and print a link to the GUI
             gr.Interface(fn=create_caption_gui_wrapper,
                          inputs=gr.inputs.Image(shape=(cfg.IMAGE_SIZE, cfg.IMAGE_SIZE)),
                          outputs='text',
-                         examples=['img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg', 'img5.jpg', 'img6.jpg']
+                         examples=cfg.IMAGES_EXAMPLES
                          ).launch(share=True)
         elif cmd == '3':
             run = False
