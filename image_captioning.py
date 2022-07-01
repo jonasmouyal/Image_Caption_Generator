@@ -1,13 +1,17 @@
 import h5py
 import json
 import cv2
-import time
+import argparse
+import sys
+import train_model
 import gradio as gr
 import numpy as np
+import pandas as pd
 import config as cfg
 import tensorflow as tf
 from collections import defaultdict
 from pyinflect import getInflection
+from argparse import RawTextHelpFormatter
 
 
 def load_model_ext(filepath):
@@ -87,43 +91,86 @@ def create_caption_gui_wrapper(img):
     return pred_caption
 
 
+def create_captions_in_csv():
+    """
+    create_captions_in_csv() create captions for all the images in the folder cfg.IMAGES_EXAMPLES_FOLDER
+    and save the captions in the csv file cfg.CSV_FILE =
+    """
+
+    captions = list()
+    images = list()
+    n_images = len(cfg.IMAGES_EXAMPLES)
+    for n, file in enumerate(cfg.IMAGES_EXAMPLES):
+        print(f'progress: {100 * (n + 1) / n_images:.2f}%')
+        # load file and preprocess
+        img = cv2.imread(file)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # create caption and print the result
+        pred_caption = create_caption_cnn(img, cfg.PROBA_THRESH)
+        captions.append(pred_caption)
+        images.append(file)
+    # print and save the captions
+    df_captions = pd.DataFrame()
+    df_captions['images'] = images
+    df_captions['captions'] = captions
+    print(df_captions)
+    df_captions.to_csv(cfg.CSV_FILE)
+
+
+def create_gui_link():
+    """
+    create_gui_link() creates a link to the gui in the local machine and in an external url link
+    """
+    # create GUI object and print a link to the GUI
+    gr.Interface(fn=create_caption_gui_wrapper,
+                 inputs=gr.inputs.Image(shape=(cfg.IMAGE_SIZE, cfg.IMAGE_SIZE)),
+                 outputs='text',
+                 examples=cfg.IMAGES_EXAMPLES
+                 ).launch(share=True)
+
+
+def parse_args(args_string_list):
+    """
+    parse_args() is parsing the py file input arguments into the struct args
+    :param args_string_list: a list of the input arguments of the py file
+    :return a Struct with all the input arguments of the py file
+    """
+
+    # Interface definition
+    parser = argparse.ArgumentParser(description="This program can generate caption to a given.\n"
+                                                 "It allows to open a GUI or to caption all the images in the folder\n"
+                                                 "cfg.IMAGES_EXAMPLES_FOLDER.\n"
+                                                 "It also allows to retrain the models using the hyperparameters"
+                                                 "in the config.py.",
+                                     formatter_class=RawTextHelpFormatter)
+
+    parser.add_argument('-m', '--model', type=str, help='Options: transformer, cnn', default='transformer')
+    parser.add_argument('-p', '--program_mode', type=str, help='Options: csv, gui, train', default='csv')
+
+    return parser.parse_args(args_string_list)
+
+
 def main():
     """
     main() getting the input arguments of the py file
     main() also catches exceptions
     """
 
-    # TODO: exceptions!!!!!
+    args = parse_args(sys.argv[1:])
 
-    print('Welcome to image captioning')
+    if args.program_mode == 'csv':
 
-    run = True
-    while run:
-        cmd = input('\nPlease choose an option:\n' +
-                    '1. Image captioning in terminal\n' +
-                    '2. Create GUI link for image captioning\n' +
-                    '3. Exit\n')
-        if cmd == '1':
-            # load image
-            file = input('Please enter image file name\n')
-            img = cv2.imread(file)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            # create caption and print the result
-            pred_caption = create_caption_cnn(img, cfg.PROBA_THRESH)
-            print('\nImage caption:')
-            print(pred_caption)
-        elif cmd == '2':
-            # create GUId object and print a link to the GUI
-            gr.Interface(fn=create_caption_gui_wrapper,
-                         inputs=gr.inputs.Image(shape=(cfg.IMAGE_SIZE, cfg.IMAGE_SIZE)),
-                         outputs='text',
-                         examples=cfg.IMAGES_EXAMPLES
-                         ).launch(share=True)
-        elif cmd == '3':
-            run = False
-        else:
-            print('Wrong input')
-        time.sleep(2)
+        try:
+            create_captions_in_csv()
+        except cv2.error as e:
+            print(f'{e}Warning: All the files in the folder "{cfg.IMAGES_EXAMPLES_FOLDER}" must be images!')
+
+    elif args.program_mode == 'train':
+
+        train_model.fit()
+    else:  # 'GUI'
+
+        create_gui_link()
 
 
 # load model

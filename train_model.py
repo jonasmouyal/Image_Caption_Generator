@@ -16,8 +16,14 @@ import h5py
 import json
 
 
-def save_model_ext(model, filepath, overwrite=True, meta_data=None):
-    save_model(model, filepath, overwrite)
+def save_model_ext(model, filepath, meta_data=None):
+    """
+    save_model_ext() is saving keras model and the classes of the model's prediction
+    :param model: keras model to be saved
+    :param filepath: string with the path to save the model
+    :param meta_data: meta_data: classes that the model predicts
+    """
+    save_model(model, filepath, overwrite=True)
     if meta_data is not None:
         f = h5py.File(filepath, mode='a')
         f.attrs['my_meta_data'] = meta_data
@@ -25,11 +31,18 @@ def save_model_ext(model, filepath, overwrite=True, meta_data=None):
 
 
 def create_image_generators(df_4_train, df_4_test):
+    """
+    create_image_generators() create ImageDataGenerator for the train, validation and test sets
+    :param df_4_train: Dataframe with the images' information (train set)
+    :param df_4_test: Dataframe with the images' information (test set)
+    :return: train_gen, valid_gen, test_gen: ImageDataGenerator of the train, validation and test sets
+    """
     if cfg.AUGMENTATION:
-        datagen = ImageDataGenerator(rescale=cfg.RESCALE, validation_split=cfg.TEST_SPLIT, rotation_range=cfg.ROTATE,
-                                     height_shift_range=cfg.SHIFT, width_shift_range=cfg.SHIFT, horizontal_flip=True)
+        datagen = ImageDataGenerator(rescale=cfg.RESCALE, validation_split=cfg.VALIDATION_SPLIT,
+                                     rotation_range=cfg.ROTATE, height_shift_range=cfg.SHIFT,
+                                     width_shift_range=cfg.SHIFT, horizontal_flip=True)
     else:
-        datagen = ImageDataGenerator(rescale=cfg.RESCALE, validation_split=cfg.TEST_SPLIT)
+        datagen = ImageDataGenerator(rescale=cfg.RESCALE, validation_split=cfg.VALIDATION_SPLIT)
 
     train_gen = datagen.flow_from_dataframe(
         dataframe=df_4_train,
@@ -68,7 +81,14 @@ def create_image_generators(df_4_train, df_4_test):
     return train_gen, valid_gen, test_gen
 
 
-def train_evaluate_model(train_generator, valid_generator, test_generator):
+def create_and_fit_model(train_generator, valid_generator):
+    """
+    create_and_fit_model() creates the cnn model architecture and use the hyperparameters
+    It's also fitting the model and returns the trained model
+    :param train_generator: ImageDataGenerator of the train set images
+    :param valid_generator: ImageDataGenerator of the validation set images
+    :return: keras model
+    """
     pre_trained_model = cfg.PRETRAIN_MODEL(include_top=False, input_shape=(cfg.IMAGE_SIZE, cfg.IMAGE_SIZE, 3))
     pre_trained_model.trainable = cfg.TRAIN_ALL
 
@@ -84,6 +104,18 @@ def train_evaluate_model(train_generator, valid_generator, test_generator):
     es = EarlyStopping(monitor='val_loss', patience=cfg.PATIENCE, restore_best_weights=True)
     model.fit(train_generator, validation_data=valid_generator, epochs=cfg.EPOCHS, callbacks=es)
 
+    return model
+
+
+def print_classification_report(model, train_generator, test_generator):
+    """
+    print_classification_report() print classification report of the model
+    label predictions using the probability threshold "cfg.PROBA_THRESH"
+    :param model: keras model
+    :param train_generator: ImageDataGenerator of the train set images
+    :param test_generator: ImageDataGenerator of the test set images
+    """
+
     IMAGE_LABELS_LIST = list(train_generator.class_indices.keys())
     n_images = len(test_generator.classes)
     n_labels = len(IMAGE_LABELS_LIST)
@@ -94,16 +126,18 @@ def train_evaluate_model(train_generator, valid_generator, test_generator):
             encode_labels[i, label_index] = 1
 
     y_prob = model.predict(test_generator)
-    thresh = 0.5
-    y_pred = np.array([[1 if i > thresh else 0 for i in j] for j in y_prob])
-    print('Threshold:', thresh)
+    y_pred = np.array([[1 if i > cfg.PROBA_THRESH else 0 for i in j] for j in y_prob])
+    print('Threshold:', cfg.PROBA_THRESH)
     print(classification_report(encode_labels, y_pred, target_names=IMAGE_LABELS_LIST))
-
-    return model
 
 
 def create_df():
-    df_image_comments = pd.read_csv(cfg.IMAGES_FOLDER + cfg.CAPTIONS)
+    """
+    create_df() creates train and test Dataframes with the labels of the images
+    it creates them from the dataframe of images comments
+    :return: Dataframes: df_train and df_test
+    """
+    df_image_comments = pd.read_csv(cfg.IMAGES_FOLDER + cfg.COMMENTS)
     df_image_comments['label'] = df_image_comments[
         ['comment_0', 'comment_1', 'comment_2', 'comment_3', 'comment_4']].apply(find_labels, axis=1)
     df_image_comments = df_image_comments.dropna(axis=0)
@@ -112,6 +146,12 @@ def create_df():
 
 
 def invert_dict(d):
+    """
+    invert_dict() invert the order of the values and keys in the dictionary
+    :param d: a dictionary
+    :return: revert dictionary
+    """
+
     inverse = dict()
     for key in d:
         # Go through the list that is saved in the dict:
@@ -126,6 +166,12 @@ def invert_dict(d):
 
 
 def find_labels(comments):
+    """
+    find_labels() finds the desire labels in each image captions
+    The desire labels are defined in cfg.IMAGE_LABELS
+    :param comments: a series of image comments
+    :return: list of labels
+    """
     labels = list()
     singles = list()
     for comment in comments:
@@ -143,20 +189,22 @@ def find_labels(comments):
     return list(set(labels_out))
 
 
-def main():
-    answer = input('Warning- Continue only if you have GPU\n Continue? (y,n)')
+def fit():
+    """
+    fit() is splitting the images' data to train, validation and test and use them with image generators
+    then it trains the model, prints classification report and allows to save the trained model
+    """
+    # preprocess and train model
+    answer = input('Warning- It is recommended to continue only if you have GPU\n Continue? (y,n)\n')
     if answer.lower() == 'y':
         df_train, df_test = create_df()
         train_g, valid_g, test_g = create_image_generators(df_train, df_test)
-        model = train_evaluate_model(train_g, valid_g, test_g)
+        model = create_and_fit_model(train_g, valid_g)
+        print_classification_report(model, train_g, test_g)
 
-    # save
-    answer = input('Overwrite model? (y,n)')
-    if answer.lower() == 'y':
-        labels = list(train_g.class_indices.keys())
-        labels_string = json.dumps(labels)
-        save_model_ext(model, cfg.CNN_MODEL_FILE, meta_data=labels_string)
-
-
-if __name__ == '__main__':
-    main()
+        # save model
+        answer = input('Overwrite model? (y,n)\n')
+        if answer.lower() == 'y':
+            labels = list(train_g.class_indices.keys())
+            labels_string = json.dumps(labels)
+            save_model_ext(model, cfg.CNN_MODEL_FILE, meta_data=labels_string)

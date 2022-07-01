@@ -1,4 +1,4 @@
-import tensorflow as tf
+import os
 from keras.applications.xception import Xception
 
 # prediction
@@ -20,7 +20,7 @@ TEST_SPLIT = 0.1
 VALIDATION_SPLIT = 0.1 / (1 - TEST_SPLIT)
 
 # ImageDataGenerator
-CAPTIONS = 'image_comments.csv'
+COMMENTS = 'image_comments.csv'
 IMAGES_FOLDER = "./images/"
 RESCALE = 1. / 255.
 SEED = 1
@@ -41,10 +41,8 @@ EPOCHS = 30
 LEARNING_RATE = 3e-5
 PATIENCE = 3  # EarlyStopping
 
-# GUI
-IMAGES_EXAMPLES = ['examples/img1.jpg', 'examples/img2.jpg', 'examples/img3.jpg', 'examples/img4.jpg',
-                   'examples/img5.jpg', 'examples/img6.jpg']
-
-AUGMENTATION = False
-EPOCHS = 1
-TRAIN_ALL = False
+# GUI and csv
+IMAGES_EXAMPLES_FOLDER = 'examples/'
+images = os.listdir(IMAGES_EXAMPLES_FOLDER)
+IMAGES_EXAMPLES = [IMAGES_EXAMPLES_FOLDER+img for img in images]
+CSV_FILE = 'captions.csv'
