@@ -21,7 +21,7 @@ VALIDATION_SPLIT = 0.1 / (1 - TEST_SPLIT)
 
 # ImageDataGenerator
 COMMENTS = 'image_comments.csv'
-IMAGES_FOLDER = "./images/"
+IMAGES_FOLDER = "./Images/"
 RESCALE = 1. / 255.
 SEED = 1
 
@@ -50,4 +50,4 @@ CAPTIONS = 'captions.txt'
 IMAGES_EXAMPLES_FOLDER = 'examples/'
 images = os.listdir(IMAGES_EXAMPLES_FOLDER)
 IMAGES_EXAMPLES = [IMAGES_EXAMPLES_FOLDER + img for img in images]
-CSV_FILE = 'captions.csv'
+CSV_FILE = 'generated_example_captions.csv'
