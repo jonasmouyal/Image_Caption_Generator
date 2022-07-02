@@ -45,6 +45,7 @@ PATIENCE = 3  # EarlyStopping
 TRANSFORMER_PATH = os.getcwd() + '/transformer'
 MAX_LENGTH = 15  # caption's number of tokens
 CAPTIONS = 'captions.txt'
+TRAIN_SIZE = 36000
 
 # GUI and csv
 IMAGES_EXAMPLES_FOLDER = 'examples/'
