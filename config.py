@@ -30,7 +30,7 @@ AUGMENTATION = True
 SHIFT = 0.1
 ROTATE = 35
 
-# network
+# cnn network
 CNN_MODEL_FILE = 'cnn_model/cnn_model.h5'
 PRETRAIN_MODEL = Xception
 TRAIN_ALL = True
@@ -41,8 +41,13 @@ EPOCHS = 30
 LEARNING_RATE = 3e-5
 PATIENCE = 3  # EarlyStopping
 
+# transformer
+TRANSFORMER_PATH = os.getcwd() + '/transformer'
+MAX_LENGTH = 15  # caption's number of tokens
+CAPTIONS = 'captions.txt'
+
 # GUI and csv
 IMAGES_EXAMPLES_FOLDER = 'examples/'
 images = os.listdir(IMAGES_EXAMPLES_FOLDER)
-IMAGES_EXAMPLES = [IMAGES_EXAMPLES_FOLDER+img for img in images]
+IMAGES_EXAMPLES = [IMAGES_EXAMPLES_FOLDER + img for img in images]
 CSV_FILE = 'captions.csv'

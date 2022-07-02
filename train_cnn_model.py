@@ -194,17 +194,17 @@ def fit():
     fit() is splitting the images' data to train, validation and test and use them with image generators
     then it trains the model, prints classification report and allows to save the trained model
     """
-    # preprocess and train model
     answer = input('Warning- It is recommended to continue only if you have GPU\n Continue? (y,n)\n')
     if answer.lower() == 'y':
+        # preprocess and train model
         df_train, df_test = create_df()
         train_g, valid_g, test_g = create_image_generators(df_train, df_test)
         model = create_and_fit_model(train_g, valid_g)
         print_classification_report(model, train_g, test_g)
 
-        # save model
         answer = input('Overwrite model? (y,n)\n')
         if answer.lower() == 'y':
+            # save model and labels
             labels = list(train_g.class_indices.keys())
             labels_string = json.dumps(labels)
             save_model_ext(model, cfg.CNN_MODEL_FILE, meta_data=labels_string)

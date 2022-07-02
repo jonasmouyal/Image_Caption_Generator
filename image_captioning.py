@@ -3,7 +3,8 @@ import json
 import cv2
 import argparse
 import sys
-import train_model
+import train_cnn_model
+import train_transformer
 import gradio as gr
 import numpy as np
 import pandas as pd
@@ -12,6 +13,7 @@ import tensorflow as tf
 from collections import defaultdict
 from pyinflect import getInflection
 from argparse import RawTextHelpFormatter
+from transformers import VisionEncoderDecoderModel, AutoFeatureExtractor, AutoTokenizer
 
 
 def load_model_ext(filepath):
@@ -21,20 +23,19 @@ def load_model_ext(filepath):
     :return: model: keras model
     :return: meta_data: classes that the model predicts
     """
-    model = tf.keras.models.load_model(filepath)
+    loaded_model = tf.keras.models.load_model(filepath)
     f = h5py.File(filepath, mode='r')
     meta_data = None
     if 'my_meta_data' in f.attrs:
         meta_data = f.attrs.get('my_meta_data')
     f.close()
-    return model, meta_data
+    return loaded_model, meta_data
 
 
-def create_caption_cnn(img, thresh):
+def create_caption_cnn(img):
     """
     create_caption_cnn() create a caption for an image using a cnn model that was trained on 'Flickr image dataset'
     :param img: a numpy array of the image
-    :param thresh: a float with a probability threshold for choosing the model labels' probabilities prediction
     :return: a string of the image caption
     """
 
@@ -46,7 +47,7 @@ def create_caption_cnn(img, thresh):
     pred = cnn_model.predict(img)
 
     # create labels prediction list by the probabilities threshold
-    y_pred = np.array([[1 if i > thresh else 0 for i in j] for j in pred])
+    y_pred = np.array([[1 if i > cfg.PROBA_THRESH else 0 for i in j] for j in pred])
     pred_labels = cnn_labels[y_pred.astype(bool)[0]]
 
     # organize labels by their pos tags
@@ -78,17 +79,19 @@ def create_caption_cnn(img, thresh):
     return ' '.join(caption)
 
 
-def create_caption_gui_wrapper(img):
+def create_caption_transformer(img):
     """
-    classify_image() is a function that used in the GUI in order to generate a caption to an image
-    :param img: numpy array of the image
-    :return: a string of the caption
+    create_caption_transformer() create a caption for an image using a transformer model
+    that was trained on 'Flickr image dataset'
+    :param img: a numpy array of the image
+    :return: a string of the image caption
     """
 
-    # create caption and print the result
-    pred_caption = create_caption_cnn(img, cfg.PROBA_THRESH)
-
-    return pred_caption
+    sample = feature_extractor(img, return_tensors="pt").pixel_values.to('cpu')
+    caption_ids = model.generate(sample, max_length=15)[0]  # TODO: take care of the caption length and create cfg
+    caption_text = tokenizer.decode(caption_ids, skip_special_tokens=True)
+    caption_text = caption_text.split('.')[0]
+    return caption_text
 
 
 def create_captions_in_csv():
@@ -96,6 +99,10 @@ def create_captions_in_csv():
     create_captions_in_csv() create captions for all the images in the folder cfg.IMAGES_EXAMPLES_FOLDER
     and save the captions in the csv file cfg.CSV_FILE =
     """
+    if args.model == 'cnn':
+        fnc = create_caption_cnn
+    else:  # 'transformer'
+        fnc = create_caption_transformer
 
     captions = list()
     images = list()
@@ -106,7 +113,7 @@ def create_captions_in_csv():
         img = cv2.imread(file)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         # create caption and print the result
-        pred_caption = create_caption_cnn(img, cfg.PROBA_THRESH)
+        pred_caption = fnc(img)
         captions.append(pred_caption)
         images.append(file)
     # print and save the captions
@@ -115,6 +122,7 @@ def create_captions_in_csv():
     df_captions['captions'] = captions
     print(df_captions)
     df_captions.to_csv(cfg.CSV_FILE)
+    print(f"Captions were saved to the file '{cfg.CSV_FILE}'")
 
 
 def create_gui_link():
@@ -122,10 +130,14 @@ def create_gui_link():
     create_gui_link() creates a link to the gui in the local machine and in an external url link
     """
     # create GUI object and print a link to the GUI
-    gr.Interface(fn=create_caption_gui_wrapper,
-                 inputs=gr.inputs.Image(shape=(cfg.IMAGE_SIZE, cfg.IMAGE_SIZE)),
+    if args.model == 'cnn':
+        fnc = create_caption_cnn
+    else:  # 'transformer'
+        fnc = create_caption_transformer
+
+    gr.Interface(fn=fnc,
+                 inputs="image",
                  outputs='text',
-                 examples=cfg.IMAGES_EXAMPLES
                  ).launch(share=True)
 
 
@@ -144,8 +156,8 @@ def parse_args(args_string_list):
                                                  "in the config.py.",
                                      formatter_class=RawTextHelpFormatter)
 
+    parser.add_argument('-p', '--program_mode', type=str, help='Options: csv, gui, train', required=True)
     parser.add_argument('-m', '--model', type=str, help='Options: transformer, cnn', default='transformer')
-    parser.add_argument('-p', '--program_mode', type=str, help='Options: csv, gui, train', default='csv')
 
     return parser.parse_args(args_string_list)
 
@@ -156,26 +168,31 @@ def main():
     main() also catches exceptions
     """
 
-    args = parse_args(sys.argv[1:])
-
     if args.program_mode == 'csv':
-
         try:
             create_captions_in_csv()
         except cv2.error as e:
             print(f'{e}Warning: All the files in the folder "{cfg.IMAGES_EXAMPLES_FOLDER}" must be images!')
 
     elif args.program_mode == 'train':
+        if args.model == 'cnn':
+            train_cnn_model.fit()
+        else:  # 'transformer'
+            train_transformer.fit()
 
-        train_model.fit()
-    else:  # 'GUI'
-
+    else:  # 'gui'
         create_gui_link()
 
 
-# load model
-cnn_model, loaded_labels_string = load_model_ext(cfg.CNN_MODEL_FILE)
-cnn_labels = np.array(json.loads(loaded_labels_string))
+# ------- load model ------- #
+args = parse_args(sys.argv[1:])
+if args.model == 'cnn':
+    cnn_model, loaded_labels_string = load_model_ext(cfg.CNN_MODEL_FILE)
+    cnn_labels = np.array(json.loads(loaded_labels_string))
+else:  # 'transformer'
+    model = VisionEncoderDecoderModel.from_pretrained(cfg.TRANSFORMER_PATH).to('cpu')
+    feature_extractor = AutoFeatureExtractor.from_pretrained('google/vit-base-patch16-224-in21k')
+    tokenizer = AutoTokenizer.from_pretrained('gpt2')
 
 if __name__ == '__main__':
     main()
