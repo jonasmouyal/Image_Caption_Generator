@@ -138,6 +138,7 @@ def create_gui_link():
     gr.Interface(fn=fnc,
                  inputs="image",
                  outputs='text',
+                 examples=cfg.IMAGES_EXAMPLES
                  ).launch(share=True)
 
 
