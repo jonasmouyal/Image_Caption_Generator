@@ -3,7 +3,7 @@
 - This program generates a caption to an image.  
 It uses a Vision Encoder Decoder Model (transformer)
 that was train on kaggle data set of 8k images.  
-More details about this project: https://medium.com/@marciano.sar/e4d7006db5a1
+More details about this project: https://medium.com/@marciano.sar/e4d7006db5a1  
 Web app interface: https://huggingface.co/spaces/yairVag/Image_Captioning
 
 - The program can either open a gui for uploading an image and generate the caption,  
