@@ -27,7 +27,7 @@ class MyDataset(Dataset):
         file_name = self.df['image'][idx]
         caption = self.df['caption'][idx]
         # prepare image (i.e. resize + normalize)
-        image = Image.open(self.root_dir + file_name).convert("RGB").resize((400, 400))  # TODO: define correctly!
+        image = Image.open(self.root_dir + file_name).convert("RGB").resize((cfg.IMAGE_SIZE_VIT, cfg.IMAGE_SIZE_VIT))
         pixel_values = self.feature_extractor(images=image, return_tensors="pt").pixel_values
 
         # add labels (input_ids) by encoding the text
@@ -77,9 +77,9 @@ def set_model_configuration(model, decoder_tokenizer):
     model.config.eos_token_id = decoder_tokenizer.sep_token_id
     model.config.max_length = cfg.MAX_LENGTH
     model.config.early_stopping = True
-    model.config.no_repeat_ngram_size = 3
-    model.config.length_penalty = 2.0
-    model.config.num_beams = 4
+    model.config.no_repeat_ngram_size = cfg.NO_REPEAT_NGRAM_SIZE
+    model.config.length_penalty = cfg.LENGTH_PENALTY
+    model.config.num_beams = cfg.NUM_BEAMS
     model.decoder.resize_token_embeddings(len(decoder_tokenizer))
 
     # freezing the encoder
@@ -101,16 +101,16 @@ def set_train_configuration(model, feature_extractor, train_dataset, eval_datase
         predict_with_generate=True,
         evaluation_strategy="steps",
         save_strategy="steps",
-        per_device_train_batch_size=5,
-        per_device_eval_batch_size=5,
+        per_device_train_batch_size=cfg.TRAIN_BATCH_SIZE,
+        per_device_eval_batch_size=cfg.EVAL_BATCH_SIZE,
         overwrite_output_dir=False,
         fp16=False,
-        learning_rate=4e-5,
-        num_train_epochs=3,
+        learning_rate=cfg.LR,
+        num_train_epochs=cfg.NUM_TRAIN_EPOCHS,
         load_best_model_at_end=True,
-        logging_steps=3500,
-        eval_steps=3500,
-        save_steps=7000,
+        logging_steps=cfg.LOGGING_STEPS,
+        eval_steps=cfg.EVAL_STEPS,
+        save_steps=cfg.SAVE_STEPS,
         report_to="none",
         disable_tqdm=False,
     )

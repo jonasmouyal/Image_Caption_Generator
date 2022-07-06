@@ -88,7 +88,7 @@ def create_caption_transformer(img):
     """
 
     sample = feature_extractor(img, return_tensors="pt").pixel_values.to('cpu')
-    caption_ids = model.generate(sample, max_length=15)[0]  # TODO: take care of the caption length and create cfg
+    caption_ids = model.generate(sample)[0]
     caption_text = tokenizer.decode(caption_ids, skip_special_tokens=True)
     caption_text = caption_text.split('.')[0]
     return caption_text
